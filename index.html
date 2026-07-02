@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Consulta Deportistas</title>
+    <style>
+        :root { --ios-bg: #f2f2f7; --header-bg: #ffffff; --accent-green: #34c759; --error-red: #ff3b30; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--ios-bg); margin: 0; padding-top: 70px; transition: background 0.3s ease; }
+        
+        /* Barra de búsqueda */
+        .sticky-header { position: fixed; top: 0; left: 0; right: 0; padding: 15px; background: var(--header-bg); border-bottom: 0.5px solid #c6c6c8; z-index: 100; }
+        input { width: 100%; padding: 12px; border-radius: 10px; border: none; background: #e5e5ea; font-size: 16px; box-sizing: border-box; }
+        
+        /* Tabla */
+        .table-container { overflow-x: auto; padding: 10px; }
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #f0f0f0; font-size: 14px; white-space: nowrap; }
+        th { background: #f9f9f9; font-weight: 600; color: #8e8e93; }
+        
+        .match-row { background-color: rgba(52, 199, 89, 0.2); }
+        .no-match { background-color: var(--error-red) !important; }
+    </style>
+</head>
+<body>
+
+<div class="sticky-header">
+    <input type="text" id="searchInput" placeholder="Buscar por nombre o RUT...">
+</div>
+
+<div class="table-container">
+    <table id="resultsTable">
+        <thead>
+            <tr><th>Nombre</th><th>RUT</th><th>Fecha Nac.</th><th>Previsión</th></tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+    </table>
+</div>
+
+<script>
+    const dataset = [
+        { nombre: "Agustin Alonso Vargas Chavez", rut: "26128899-0", fecha: "14/02/2018", prevision: "FONASA B" },
+        { nombre: "Facundo Tomás Aguayo Rojas", rut: "26056974-0", fecha: "01/01/2018", prevision: "FONASA B" },
+        { nombre: "Renato Vicente Contreras Vargas", rut: "26602494-0", fecha: "03/12/2018", prevision: "FONASA B" },
+        { nombre: "Bastian Cisternas Gomez", rut: "24844303-0", fecha: "02/01/2015", prevision: "FONASA B" },
+        { nombre: "Danilo Ariel Alarcón Flores", rut: "23113694-0", fecha: "02/09/2009", prevision: "FONASA B" },
+        { nombre: "Max Andrés Zuloaga Gallardo", rut: "22918080-0", fecha: "08/01/2009", prevision: "FONASA B" },
+        { nombre: "Emilio Alexis Valdes Rozas", rut: "22941768-1", fecha: "29/01/2009", prevision: "FONASA B" },
+        { nombre: "Matías Ignacio Yañez Castro", rut: "23215665-k", fecha: "N/A", prevision: "N/A" }
+    ];
+
+    const searchInput = document.getElementById('searchInput');
+    const tableBody = document.getElementById('tableBody');
+
+    const normalize = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+    searchInput.addEventListener('input', () => {
+        const val = normalize(searchInput.value);
+        const terms = val.split(' ').filter(t => t.length > 0);
+        
+        let filtered = dataset.filter(item => {
+            const rowStr = normalize(`${item.nombre} ${item.rut}`);
+            return terms.every(term => rowStr.includes(term));
+        });
+
+        if (val === "") {
+            document.body.style.backgroundColor = 'var(--ios-bg)';
+            tableBody.innerHTML = '';
+            return;
+        }
+
+        if (filtered.length === 0) {
+            document.body.style.backgroundColor = 'var(--error-red)';
+            tableBody.innerHTML = '';
+        } else {
+            document.body.style.backgroundColor = 'var(--ios-bg)';
+            const displayData = filtered.slice(0, 5);
+            tableBody.innerHTML = displayData.map(item => `
+                <tr class="match-row">
+                    <td>${item.nombre}</td>
+                    <td>${item.rut}</td>
+                    <td>${item.fecha}</td>
+                    <td>${item.prevision}</td>
+                </tr>
+            `).join('');
+        }
+    });
+</script>
+</body>
+</html>
