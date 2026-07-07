@@ -211,27 +211,44 @@ const firebaseConfig = {
     });
 
     function copiarFila(btn, nombre, rut, fecha, prevision) {
-        var textoParaCopiar = "Nombre: " + nombre + "\nRUT: " + rut + "\nFecha Nac: " + fecha + "\nPrevisión: " + prevision;
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(textoParaCopiar).then(mostrarExito).catch(ejecutarFallback);
-        } else {
-            ejecutarFallback();
-        }
-        function ejecutarFallback() {
-            var textArea = document.createElement("textarea");
-            textArea.value = textoParaCopiar;
-            textArea.style.position = "fixed";
-            document.body.appendChild(textArea);
-            textArea.select();
-            try { document.execCommand('copy'); mostrarExito(); } catch (err) {}
-            document.body.removeChild(textArea);
-        }
-        function mostrarExito() {
-            var iconoOriginal = btn.textContent;
-            btn.textContent = "✅";
-            setTimeout(function() { btn.textContent = iconoOriginal; }, 1200);
-        }
+    var textoParaCopiar = "Nombre: " + nombre + "\nRUT: " + rut + "\nFecha Nac: " + fecha + "\nPrevisión: " + prevision;
+    
+    // Forzamos el método tradicional si detecta que estamos en un entorno inseguro o PC restrictiva
+    if (window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(textoParaCopiar)
+            .then(mostrarExito)
+            .catch(function() { ejecutarFallback(textoParaCopiar); });
+    } else {
+        ejecutarFallback(textoParaCopiar);
     }
+
+    function ejecutarFallback(texto) {
+        var textArea = document.createElement("textarea");
+        textArea.value = texto;
+        // Prevenimos scroll visual e intentamos que sea invisible
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px"; 
+        document.body.appendChild(textArea);
+        
+        // Selección específica para asegurar el foco en PC
+        textArea.focus();
+        textArea.select();
+        
+        try {
+            var exitoso = document.execCommand('copy');
+            if (exitoso) mostrarExito();
+        } catch (err) {
+            console.error('Error en el método alternativo de copia:', err);
+        }
+        document.body.removeChild(textArea);
+    }
+
+    function mostrarExito() {
+        var iconoOriginal = btn.textContent;
+        btn.textContent = "✅";
+        setTimeout(function() { btn.textContent = iconoOriginal; }, 1200);
+    }
+}
 </script>
 </body>
 </html>
