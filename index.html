@@ -6,9 +6,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
-    <link rel="icon" type="image/png" href="icono.png?v=1">
-    
     <link rel="apple-touch-icon" href="icono.png?v=1">
+    <link rel="icon" type="image/png" href="icono.png?v=1">
     
     <title>Buscador Seguro</title>
     
@@ -17,7 +16,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore-compat.js"></script>
 
     <style>
-        :root { --ios-bg: #f2f2f7; --header-bg: #ffffff; --accent-green: #34c759; --accent-blue: #007aff; --error-red: #ff3b30; }
+        :root { --ios-bg: #f2f2f7; --header-bg: #ffffff; --accent-green: #34c759; --accent-blue: #007aff; --error-red: #ff3b30; --ios-gray: #8e8e93; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--ios-bg); margin: 0; transition: background 0.3s ease; }
         
         /* PANTALLA DE LOGIN */
@@ -25,25 +24,54 @@
         .login-card { background: white; padding: 30px 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); width: 100%; max-width: 320px; text-align: center; }
         .login-card h2 { margin-top: 0; font-size: 22px; font-weight: 600; margin-bottom: 20px; }
         .login-input { width: 100%; padding: 15px; border-radius: 10px; border: 1px solid #c6c6c8; font-size: 16px; margin-bottom: 15px; box-sizing: border-box; }
+        
+        /* Estilos Casilla Recordarme */
+        .remember-group { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 15px; font-size: 14px; color: #48484a; user-select: none; }
+        .remember-group input { width: 18px; height: 18px; border-radius: 4px; cursor: pointer; }
+
         .login-btn { background: var(--accent-blue); color: white; border: none; padding: 15px; width: 100%; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; }
         .error-msg { color: var(--error-red); font-size: 14px; margin-top: 10px; display: none; }
         .loading-msg { color: var(--accent-blue); font-size: 14px; margin-top: 10px; display: none; }
 
-        /* CONTENIDO DE LA APP */
-        #appContent { display: none; padding-top: 70px; }
+        /* CONTENIDO GENERAL DE LA APP */
+        #appContent { display: none; }
+        .view-section { display: none; padding: 20px 15px; box-sizing: border-box; }
+        .active-view { display: block; }
+
+        /* HEADER STICKY */
+        .sticky-header { position: fixed; top: 0; left: 0; right: 0; padding: 12px 15px; background: var(--header-bg); border-bottom: 0.5px solid #c6c6c8; z-index: 100; display: flex; align-items: center; gap: 10px; height: 44px; }
+        .back-btn { background: none; border: none; color: var(--accent-blue); font-size: 16px; font-weight: 500; cursor: pointer; padding: 0; display: flex; align-items: center; }
+        .search-input { flex: 1; padding: 8px 12px; border-radius: 10px; border: none; background: #e5e5ea; font-size: 16px; box-sizing: border-box; }
+
+        /* PANTALLA 1: MENU PRINCIPAL (DASHBOARD) */
+        .dashboard-header { display: flex; justify-content: space-between; align-items: flex-start; max-width: 400px; margin: 20px auto 25px auto; padding: 0 5px; }
+        .welcome-container { text-align: left; }
+        .welcome-container h1 { font-size: 26px; font-weight: 700; margin: 0 0 5px 0; }
+        .stats-badge { background: white; padding: 6px 12px; border-radius: 20px; font-size: 13px; color: var(--ios-gray); font-weight: 500; display: inline-block; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .logout-link { background: none; border: none; color: var(--error-red); font-size: 14px; font-weight: 500; cursor: pointer; padding: 6px 0; }
         
-        /* Barra de búsqueda */
-        .sticky-header { position: fixed; top: 0; left: 0; right: 0; padding: 15px; background: var(--header-bg); border-bottom: 0.5px solid #c6c6c8; z-index: 100; }
-        .search-input { width: 100%; padding: 12px; border-radius: 10px; border: none; background: #e5e5ea; font-size: 16px; box-sizing: border-box; }
-        
-        /* Tabla */
-        .table-container { overflow-x: auto; padding: 10px; }
-        table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; }
+        .menu-grid { display: flex; flex-direction: column; gap: 15px; max-width: 400px; margin: 0 auto; }
+        .menu-card { background: white; padding: 20px; border-radius: 14px; display: flex; align-items: center; gap: 15px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.03); -webkit-tap-highlight-color: transparent; }
+        .menu-card .icon-box { font-size: 28px; width: 50px; height: 50px; background: #f2f2f7; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+        .menu-card .text-box h3 { margin: 0 0 2px 0; font-size: 17px; font-weight: 600; }
+        .menu-card .text-box p { margin: 0; font-size: 13px; color: var(--ios-gray); }
+
+        /* PANTALLA 2: TABLA DE BÚSQUEDA */
+        .table-container { overflow-x: auto; background: white; border-radius: 10px; margin-top: 50px; }
+        table { width: 100%; border-collapse: collapse; overflow: hidden; }
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid #f0f0f0; font-size: 14px; white-space: nowrap; }
-        th { background: #f9f9f9; font-weight: 600; color: #8e8e93; }
-        
-        .match-row { background-color: rgba(52, 199, 89, 0.2); }
+        th { background: #f9f9f9; font-weight: 600; color: var(--ios-gray); }
+        .match-row { background-color: rgba(52, 199, 89, 0.15); }
         .copy-btn { background: none; border: none; font-size: 16px; cursor: pointer; padding: 4px 8px; margin: 0; -webkit-tap-highlight-color: transparent; }
+
+        /* PANTALLA 3: FORMULARIO DE REGISTRO */
+        .form-container { background: white; padding: 20px; border-radius: 14px; max-width: 400px; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
+        .form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 15px; }
+        .form-group label { font-size: 14px; font-weight: 500; color: #48484a; padding-left: 3px; }
+        .form-control { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #c6c6c8; font-size: 15px; box-sizing: border-box; background: #fafafa; }
+        .form-control:focus { border-color: var(--accent-blue); background: white; outline: none; }
+        .submit-btn { background: var(--accent-green); color: white; border: none; padding: 14px; width: 100%; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 10px; }
+        .form-status { font-size: 14px; text-align: center; margin-top: 10px; font-weight: 500; display: none; }
     </style>
 </head>
 <body>
@@ -53,6 +81,12 @@
         <h2>Acceso Privado</h2>
         <input type="text" id="userInput" class="login-input" placeholder="Usuario" autocapitalize="none" autocorrect="off">
         <input type="password" id="passInput" class="login-input" placeholder="Contraseña">
+        
+        <div class="remember-group">
+            <input type="checkbox" id="rememberMe" checked>
+            <label for="rememberMe">Recordarme en este dispositivo</label>
+        </div>
+        
         <button id="loginBtn" class="login-btn">Entrar</button>
         <div id="errorMsg" class="error-msg">Usuario o contraseña incorrectos.</div>
         <div id="loadingMsg" class="loading-msg">Sincronizando base de datos...</div>
@@ -60,31 +94,95 @@
 </div>
 
 <div id="appContent">
-    <div class="sticky-header">
-        <input type="text" id="searchInput" class="search-input" placeholder="Buscar por nombre o RUT...">
+    
+    <div id="dashboardView" class="view-section active-view">
+        <div class="dashboard-header">
+            <div class="welcome-container">
+                <h1>Buscador Seguro</h1>
+                <div class="stats-badge"><span id="totalCount">0</span> deportistas en la nube</div>
+            </div>
+            <button class="logout-link" onclick="cerrarSesion()">Salir 🚪</button>
+        </div>
+        
+        <div class="menu-grid">
+            <div class="menu-card" onclick="cambiarPantalla('search')">
+                <div class="icon-box" style="color: var(--accent-blue);">🔍</div>
+                <div class="text-box">
+                    <h3>Módulo de Consultas</h3>
+                    <p>Buscador avanzado inteligente y copia de datos</p>
+                </div>
+            </div>
+            
+            <div class="menu-card" onclick="cambiarPantalla('register')">
+                <div class="icon-box" style="color: var(--accent-green);">➕</div>
+                <div class="text-box">
+                    <h3>Registrar Deportista</h3>
+                    <p>Ingreso manual directo a la base de datos central</p>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div class="table-container">
-        <table id="resultsTable">
-            <thead>
-                <tr><th></th><th>Nombre</th><th>RUT</th><th>Fecha Nac.</th><th>Previsión</th></tr>
-            </thead>
-            <tbody id="tableBody"></tbody>
-        </table>
+    <div id="searchView" class="view-section" style="padding-top: 55px;">
+        <div class="sticky-header">
+            <button class="back-btn" onclick="cambiarPantalla('dashboard')">◀ Menú</button>
+            <input type="text" id="searchInput" class="search-input" placeholder="Buscar por nombre o RUT...">
+        </div>
+        <div class="table-container">
+            <table id="resultsTable">
+                <thead>
+                    <tr><th></th><th>Nombre</th><th>RUT</th><th>Fecha Nac.</th><th>Previsión</th></tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
     </div>
+
+    <div id="registerView" class="view-section">
+        <div style="max-width:400px; margin: 0 auto 15px auto;">
+            <button class="back-btn" onclick="cambiarPantalla('dashboard')">◀ Volver al Menú</button>
+            <h2 style="margin: 15px 0 5px 0; font-size: 22px;">Nuevo Registro</h2>
+        </div>
+        
+        <div class="form-container">
+            <div class="form-group">
+                <label>Nombre Completo</label>
+                <input type="text" id="regNombre" class="form-control" placeholder="Ej: Juan Andrés Pérez">
+            </div>
+            <div class="form-group">
+                <label>RUT</label>
+                <input type="text" id="regRut" class="form-control" placeholder="Ej: 12345678-9">
+            </div>
+            <div class="form-group">
+                <label>Fecha de Nacimiento</label>
+                <input type="text" id="regFecha" class="form-control" placeholder="Ej: 15/08/2012">
+            </div>
+            <div class="form-group">
+                <label>Previsión de Salud</label>
+                <input type="text" id="regPrevision" class="form-control" placeholder="Ej: FONASA B o ISAPRE">
+            </div>
+            <div class="form-group">
+                <label>Categoría</label>
+                <input type="text" id="regCategoria" class="form-control" placeholder="Ej: SUB-14">
+            </div>
+            <button class="submit-btn" onclick="guardarNuevoDeportista()">Guardar en la Nube</button>
+            <div id="formStatus" class="form-status"></div>
+        </div>
+    </div>
+
 </div>
 
 <script>
     // =========================================================
-    // ¡REEMPLAZA ESTE BLOQUE CON TUS CREDENCIALES DE FIREBASE!
-const firebaseConfig = {
-  apiKey: "AIzaSyC7QyTMTRl2WdvuK5hf-uzIv-RPr0s5-h8",
-  authDomain: "buscador-c85db.firebaseapp.com",
-  projectId: "buscador-c85db",
-  storageBucket: "buscador-c85db.firebasestorage.app",
-  messagingSenderId: "1083903045830",
-  appId: "1:1083903045830:web:8cf9259e2d144dd112e7c7"
-};
+    // MANTÉN AQUÍ TUS CREDENCIALES DE FIREBASE:
+    const firebaseConfig = {
+        apiKey: "AIzaSy...",
+        authDomain: "tu-proyecto.firebaseapp.com",
+        projectId: "tu-proyecto",
+        storageBucket: "tu-proyecto.appspot.com",
+        messagingSenderId: "123456789",
+        appId: "1:123456789:web:abcde"
+    };
     // =========================================================
 
     firebase.initializeApp(firebaseConfig);
@@ -96,18 +194,41 @@ const firebaseConfig = {
     var appContent = document.getElementById('appContent');
     var userInput = document.getElementById('userInput');
     var passInput = document.getElementById('passInput');
+    var rememberMe = document.getElementById('rememberMe');
     var loginBtn = document.getElementById('loginBtn');
     var errorMsg = document.getElementById('errorMsg');
     var loadingMsg = document.getElementById('loadingMsg');
+    var totalCount = document.getElementById('totalCount');
     var searchInput = document.getElementById('searchInput');
     var tableBody = document.getElementById('tableBody');
 
+    function cambiarPantalla(pantalla) {
+        document.getElementById('dashboardView').classList.remove('active-view');
+        document.getElementById('searchView').classList.remove('active-view');
+        document.getElementById('registerView').classList.remove('active-view');
+        document.body.style.backgroundColor = 'var(--ios-bg)';
+
+        if (pantalla === 'dashboard') {
+            document.getElementById('dashboardView').classList.add('active-view');
+        } else if (pantalla === 'search') {
+            document.getElementById('searchView').classList.add('active-view');
+            searchInput.value = "";
+            tableBody.innerHTML = "";
+            setTimeout(function() { searchInput.focus(); }, 1500);
+        } else if (pantalla === 'register') {
+            document.getElementById('registerView').classList.add('active-view');
+            limpiarFormulario();
+        }
+    }
+
+    // El observador detecta si hay sesión activa al entrar
     auth.onAuthStateChanged(function(user) {
         if (user) {
             userInput.style.display = "none";
             passInput.style.display = "none";
             loginBtn.style.display = "none";
             errorMsg.style.display = "none";
+            document.querySelector('.remember-group').style.display = "none";
             loadingMsg.style.display = "block";
             bajarBaseDeDatos();
         } else {
@@ -115,19 +236,32 @@ const firebaseConfig = {
             userInput.style.display = "block";
             passInput.style.display = "block";
             loginBtn.style.display = "block";
+            document.querySelector('.remember-group').style.display = "flex";
             appContent.style.display = "none";
             loadingMsg.style.display = "none";
+            passInput.value = "";
         }
     });
 
+    // Gestión del inicio de sesión con Persistencia Dinámica
     function ejecutarLogin() {
         var username = userInput.value.trim();
         var password = passInput.value;
+        var recordar = rememberMe.checked;
+
         if (!username || !password) return;
+
         errorMsg.style.display = "none";
         loadingMsg.style.display = "block";
 
-        auth.signInWithEmailAndPassword(username, password)
+        // Elegir persistencia según el Checkbox
+        var tipoPersistencia = recordar ? firebase.auth.Auth.Persistence.LOCAL : firebase.auth.Auth.Persistence.SESSION;
+
+        auth.setPersistence(tipoPersistencia)
+        .then(function() {
+            // Una vez configurada la persistencia, ejecuta el login real
+            return auth.signInWithEmailAndPassword(username, password);
+        })
         .catch(function(error) {
             loadingMsg.style.display = "none";
             errorMsg.style.display = "block";
@@ -135,10 +269,12 @@ const firebaseConfig = {
         });
     }
 
+    function cerrarSesion() {
+        auth.signOut();
+    }
+
     loginBtn.addEventListener('click', ejecutarLogin);
-    passInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') ejecutarLogin();
-    });
+    passInput.addEventListener('keypress', function(e) { if (e.key === 'Enter') ejecutarLogin(); });
 
     function bajarBaseDeDatos() {
         db.collection("deportistas").get()
@@ -153,6 +289,7 @@ const firebaseConfig = {
                     prevision: d.prevision
                 });
             });
+            totalCount.textContent = dataset.length;
             loginScreen.style.display = "none";
             appContent.style.display = "block";
         })
@@ -162,6 +299,58 @@ const firebaseConfig = {
             errorMsg.style.display = "block";
             auth.signOut();
         });
+    }
+
+    function guardarNuevoDeportista() {
+        var nom = document.getElementById('regNombre').value.trim();
+        var rut = document.getElementById('regRut').value.trim();
+        var fec = document.getElementById('regFecha').value.trim();
+        var prev = document.getElementById('regPrevision').value.trim();
+        var cat = document.getElementById('regCategoria').value.trim();
+        var status = document.getElementById('formStatus');
+
+        if (!nom || !rut) {
+            status.style.color = "var(--error-red)";
+            status.textContent = "El Nombre y el RUT son obligatorios.";
+            status.style.display = "block";
+            return;
+        }
+
+        status.style.color = "var(--accent-blue)";
+        status.textContent = "Guardando en la nube...";
+        status.style.display = "block";
+
+        var nuevoDoc = {
+            nombre: nom,
+            rut: rut,
+            fechaNacimiento: fec || "Sin registro",
+            prevision: prev || "Sin registro",
+            categoria: cat || "Sin registro",
+            fechaRegistro: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        db.collection("deportistas").add(nuevoDoc)
+        .then(function() {
+            dataset.push({ nombre: nom, rut: rut, fecha: fec || "Sin registro", prevision: prev || "Sin registro" });
+            totalCount.textContent = dataset.length;
+            status.style.color = "var(--accent-green)";
+            status.textContent = "¡Deportista guardado con éxito!";
+            limpiarFormulario();
+            setTimeout(function() { cambiarPantalla('dashboard'); }, 1500);
+        })
+        .catch(function(error) {
+            status.style.color = "var(--error-red)";
+            status.textContent = "Error al guardar en el servidor.";
+        });
+    }
+
+    function limpiarFormulario() {
+        document.getElementById('regNombre').value = "";
+        document.getElementById('regRut').value = "";
+        document.getElementById('regFecha').value = "";
+        document.getElementById('regPrevision').value = "";
+        document.getElementById('regCategoria').value = "";
+        setTimeout(function() { document.getElementById('formStatus').style.display = "none"; }, 3000);
     }
 
     function normalizeText(str) {
@@ -216,44 +405,29 @@ const firebaseConfig = {
     });
 
     function copiarFila(btn, nombre, rut, fecha, prevision) {
-    var textoParaCopiar = "Nombre: " + nombre + "\nRUT: " + rut + "\nFecha Nac: " + fecha + "\nPrevisión: " + prevision;
-    
-    // Forzamos el método tradicional si detecta que estamos en un entorno inseguro o PC restrictiva
-    if (window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(textoParaCopiar)
-            .then(mostrarExito)
-            .catch(function() { ejecutarFallback(textoParaCopiar); });
-    } else {
-        ejecutarFallback(textoParaCopiar);
-    }
-
-    function ejecutarFallback(texto) {
-        var textArea = document.createElement("textarea");
-        textArea.value = texto;
-        // Prevenimos scroll visual e intentamos que sea invisible
-        textArea.style.position = "fixed";
-        textArea.style.left = "-9999px"; 
-        document.body.appendChild(textArea);
-        
-        // Selección específica para asegurar el foco en PC
-        textArea.focus();
-        textArea.select();
-        
-        try {
-            var exitoso = document.execCommand('copy');
-            if (exitoso) mostrarExito();
-        } catch (err) {
-            console.error('Error en el método alternativo de copia:', err);
+        var textoParaCopiar = "Nombre: " + nombre + "\nRUT: " + rut + "\nFecha Nac: " + fecha + "\nPrevisión: " + prevision;
+        if (window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(textoParaCopiar).then(mostrarExito).catch(function() { ejecutarFallback(textoParaCopiar); });
+        } else {
+            ejecutarFallback(textoParaCopiar);
         }
-        document.body.removeChild(textArea);
+        function ejecutarFallback(texto) {
+            var textArea = document.createElement("textarea");
+            textArea.value = texto;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-9999px"; 
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try { var exitoso = document.execCommand('copy'); if (exitoso) mostrarExito(); } catch (err) {}
+            document.body.removeChild(textArea);
+        }
+        function mostrarExito() {
+            var iconoOriginal = btn.textContent;
+            btn.textContent = "✅";
+            setTimeout(function() { btn.textContent = iconoOriginal; }, 1200);
+        }
     }
-
-    function mostrarExito() {
-        var iconoOriginal = btn.textContent;
-        btn.textContent = "✅";
-        setTimeout(function() { btn.textContent = iconoOriginal; }, 1200);
-    }
-}
 </script>
 </body>
 </html>
