@@ -7,7 +7,6 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
     <link rel="icon" type="image/png" href="icono.png?v=1">
-    
     <link rel="apple-touch-icon" href="icono.png?v=1">
     
     <title>Buscador Seguro</title>
@@ -17,7 +16,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore-compat.js"></script>
 
     <style>
-        :root { --ios-bg: #f2f2f7; --header-bg: #ffffff; --accent-green: #34c759; --accent-blue: #007aff; --error-red: #ff3b30; --ios-gray: #8e8e93; }
+        :root { --ios-bg: #f2f2f7; --header-bg: #ffffff; --accent-green: #34c759; --accent-blue: #007aff; --accent-purple: #5856d6; --error-red: #ff3b30; --ios-gray: #8e8e93; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--ios-bg); margin: 0; transition: background 0.3s ease; }
         
         /* PANTALLA DE LOGIN */
@@ -49,12 +48,22 @@
         .menu-card .text-box h3 { margin: 0 0 2px 0; font-size: 17px; font-weight: 600; }
         .menu-card .text-box p { margin: 0; font-size: 13px; color: var(--ios-gray); }
 
-        /* PANTALLA 2: TABLA DE BÚSQUEDA */
-        .table-container { overflow-x: auto; background: white; border-radius: 10px; margin-top: 50px; }
+        /* TABLAS (BUSCADOR Y COMPARADOR) */
+        .table-container { overflow-x: auto; background: white; border-radius: 10px; margin-top: 50px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
         table { width: 100%; border-collapse: collapse; overflow: hidden; }
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid #f0f0f0; font-size: 14px; white-space: nowrap; }
         th { background: #f9f9f9; font-weight: 600; color: var(--ios-gray); }
+        
+        /* Estados de filas */
         .match-row { background-color: rgba(52, 199, 89, 0.15); }
+        .row-nuevo { background-color: rgba(52, 199, 89, 0.15); font-weight: 500; }
+        .row-eliminado { background-color: rgba(255, 59, 48, 0.12); color: #c30000; }
+        .row-totalizadores { background-color: #f2f2f7; font-weight: 600; color: #48484a; border-top: 2px solid #c6c6c8; }
+        
+        .badge-status { padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; text-transform: uppercase; display: inline-block; }
+        .badge-nuevo { background: #34c759; color: white; }
+        .badge-eliminado { background: #ff3b30; color: white; }
+
         .copy-btn { background: none; border: none; font-size: 16px; cursor: pointer; padding: 4px 8px; margin: 0; -webkit-tap-highlight-color: transparent; }
 
         /* PANTALLA 3: FORMULARIO DE REGISTRO */
@@ -65,6 +74,11 @@
         .form-control:focus { border-color: var(--accent-blue); background: white; outline: none; }
         .submit-btn { background: var(--accent-green); color: white; border: none; padding: 14px; width: 100%; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 10px; }
         .form-status { font-size: 14px; text-align: center; margin-top: 10px; font-weight: 500; display: none; }
+
+        /* PANTALLA 4: COMPARADOR CSV */
+        .upload-box { background: white; padding: 30px 20px; border-radius: 14px; text-align: center; border: 2px dashed #c6c6c8; max-width: 400px; margin: 20px auto; box-sizing: border-box; }
+        .file-label { display: block; background: var(--accent-purple); color: white; padding: 12px 20px; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 15px; }
+        .file-input { display: none; }
     </style>
 </head>
 <body>
@@ -83,12 +97,9 @@
 <div id="appContent">
     
     <div id="dashboardView" class="view-section active-view">
-       <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-            <div class="welcome-container" style="margin-top: 0;">
-                <h1>Buscador Seguro</h1>
-                <div class="stats-badge"><span id="totalCount">0</span> deportistas en la nube</div>
-            </div>
-            <button onclick="firebase.auth().signOut()" style="background: none; border: none; color: var(--error-red); font-weight: bold; font-size: 14px; cursor: pointer; padding: 5px;">Salir 🚪</button>
+        <div class="welcome-container">
+            <h1>Buscador Seguro</h1>
+            <div class="stats-badge"><span id="totalCount">0</span> deportistas en la nube</div>
         </div>
         
         <div class="menu-grid">
@@ -105,6 +116,14 @@
                 <div class="text-box">
                     <h3>Registrar Deportista</h3>
                     <p>Ingreso manual directo a la base de datos central</p>
+                </div>
+            </div>
+
+            <div class="menu-card" onclick="cambiarPantalla('compare')">
+                <div class="icon-box" style="color: var(--accent-purple);">📊</div>
+                <div class="text-box">
+                    <h3>Comparar Listado CSV</h3>
+                    <p>Cruza un archivo nuevo y detecta cambios o bajas</p>
                 </div>
             </div>
         </div>
@@ -157,19 +176,43 @@
         </div>
     </div>
 
+    <div id="compareView" class="view-section">
+        <div style="max-width:600px; margin: 0 auto 15px auto;">
+            <button class="back-btn" onclick="cambiarPantalla('dashboard')">◀ Volver al Menú</button>
+            <h2 style="margin: 15px 0 5px 0; font-size: 22px;">Consolidación y Auditoría</h2>
+            <p style="font-size:13px; color: var(--ios-gray); margin: 0;">Selecciona el listado CSV externo para cruzarlo contra la base de datos de la nube.</p>
+        </div>
+
+        <div class="upload-box" id="inputBoxGroup">
+            <span style="font-size: 36px;">📂</span>
+            <p style="margin: 5px 0; font-size: 14px; font-weight: 500;">Cargar actualización (.csv)</p>
+            <label for="csvFileInput" class="file-label">Elegir Archivo</label>
+            <input type="file" id="csvFileInput" class="file-input" accept=".csv" onchange="analizarArchivoCsv(this)">
+        </div>
+
+        <div class="table-container" id="compareTableContainer" style="display:none; margin-top:20px;">
+            <table>
+                <thead>
+                    <tr><th>Estado</th><th>Nombre</th><th>RUT</th><th>Fecha Nac.</th><th>Previsión</th></tr>
+                </thead>
+                <tbody id="compareTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
 </div>
 
 <script>
     // =========================================================
     // MANTÉN AQUÍ TUS CREDENCIALES DE FIREBASE:
-const firebaseConfig = {
-  apiKey: "AIzaSyC7QyTMTRl2WdvuK5hf-uzIv-RPr0s5-h8",
-  authDomain: "buscador-c85db.firebaseapp.com",
-  projectId: "buscador-c85db",
-  storageBucket: "buscador-c85db.firebasestorage.app",
-  messagingSenderId: "1083903045830",
-  appId: "1:1083903045830:web:8cf9259e2d144dd112e7c7"
-};
+    const firebaseConfig = {
+      apiKey: "AIzaSyC7QyTMTRl2WdvuK5hf-uzIv-RPr0s5-h8",
+      authDomain: "buscador-c85db.firebaseapp.com",
+      projectId: "buscador-c85db",
+      storageBucket: "buscador-c85db.firebasestorage.app",
+      messagingSenderId: "1083903045830",
+      appId: "1:1083903045830:web:8cf9259e2d144dd112e7c7"
+    };
     // =========================================================
 
     firebase.initializeApp(firebaseConfig);
@@ -191,11 +234,11 @@ const firebaseConfig = {
     var searchInput = document.getElementById('searchInput');
     var tableBody = document.getElementById('tableBody');
 
-    // Gestión del flujo de pantallas
     function cambiarPantalla(pantalla) {
         document.getElementById('dashboardView').classList.remove('active-view');
         document.getElementById('searchView').classList.remove('active-view');
         document.getElementById('registerView').classList.remove('active-view');
+        document.getElementById('compareView').classList.remove('active-view');
         document.body.style.backgroundColor = 'var(--ios-bg)';
 
         if (pantalla === 'dashboard') {
@@ -208,6 +251,11 @@ const firebaseConfig = {
         } else if (pantalla === 'register') {
             document.getElementById('registerView').classList.add('active-view');
             limpiarFormulario();
+        } else if (pantalla === 'compare') {
+            document.getElementById('compareView').classList.add('active-view');
+            document.getElementById('csvFileInput').value = "";
+            document.getElementById('compareTableContainer').style.display = "none";
+            document.getElementById('compareTableBody').innerHTML = "";
         }
     }
 
@@ -247,7 +295,6 @@ const firebaseConfig = {
     loginBtn.addEventListener('click', ejecutarLogin);
     passInput.addEventListener('keypress', function(e) { if (e.key === 'Enter') ejecutarLogin(); });
 
-    // Descarga y sincronización inicial de la base de datos
     function bajarBaseDeDatos() {
         db.collection("deportistas").get()
         .then(function(querySnapshot) {
@@ -269,13 +316,11 @@ const firebaseConfig = {
             loadingMsg.style.display = "none";
             errorMsg.textContent = "Error de sincronización.";
             errorMsg.style.display = "block";
-            dataset = []; // Limpia los datos de la memoria
-            tableBody.innerHTML = ''; // Borra la tabla visual
             auth.signOut();
         });
     }
 
-    // LÓGICA DEL FORMULARIO DE REGISTRO (ESCRITURA EN FIRESTORE)
+    // LÓGICA DEL FORMULARIO DE REGISTRO
     function guardarNuevoDeportista() {
         var nom = document.getElementById('regNombre').value.trim();
         var rut = document.getElementById('regRut').value.trim();
@@ -306,19 +351,11 @@ const firebaseConfig = {
 
         db.collection("deportistas").add(nuevoDoc)
         .then(function() {
-            // Sincronizar localmente el nuevo deportista en la memoria del buscador
-            dataset.push({
-                nombre: nom,
-                rut: rut,
-                fecha: fec || "Sin registro",
-                prevision: prev || "Sin registro"
-            });
+            dataset.push({ nombre: nom, rut: rut, fecha: fec || "Sin registro", prevision: prev || "Sin registro" });
             totalCount.textContent = dataset.length;
-
             status.style.color = "var(--accent-green)";
             status.textContent = "¡Deportista guardado con éxito!";
             limpiarFormulario();
-            
             setTimeout(function() { cambiarPantalla('dashboard'); }, 1500);
         })
         .catch(function(error) {
@@ -334,6 +371,122 @@ const firebaseConfig = {
         document.getElementById('regPrevision').value = "";
         document.getElementById('regCategoria').value = "";
         setTimeout(function() { document.getElementById('formStatus').style.display = "none"; }, 3000);
+    }
+
+    // LÓGICA DEL TERCER MÓDULO: COMPARADOR DE ARCHIVOS CSV
+    function limpiarYSimplificarRut(rutStr) {
+        if (!rutStr) return "";
+        // Quita puntos, guiones, espacios y convierte la K a minúscula para homologar
+        return rutStr.replace(/[\.\-\s]/g, "").toLowerCase().trim();
+    }
+
+    function analizarArchivoCsv(input) {
+        var file = input.files[0];
+        if (!file) return;
+
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            var contenido = e.target.result;
+            ejecutarAlgoritmoComparador(contenido);
+        };
+        reader.readAsText(file, "UTF-8");
+    }
+
+    function ejecutarAlgoritmoComparador(textoCsv) {
+        var lineas = textoCsv.split('\n');
+        var datasetCsv = [];
+        var rutsEnCsv = new Set();
+
+        // 1. Parsear el archivo CSV entrante
+        for (var i = 1; i < lineas.length; i++) {
+            var linea = lineas[i].trim();
+            if (!linea) continue;
+
+            var columnas = linea.split(';');
+            if (columnas.length >= 5) {
+                var rutOriginal = (columnas[2] || "").trim();
+                var rutLimpio = limpiarYSimplificarRut(rutOriginal);
+                
+                if (rutLimpio) {
+                    rutsEnCsv.add(rutLimpio);
+                    datasetCsv.push({
+                        nombre: (columnas[1] || "").trim(),
+                        rut: rutOriginal,
+                        rutClave: rutLimpio,
+                        fecha: columnas[3] ? columnas[3].trim() : "Sin registro",
+                        prevision: (columnas[4] || "").trim()
+                    });
+                }
+            }
+        }
+
+        // 2. Mapear los RUTs que tenemos actualmente en la base de datos de Firebase
+        var rutsEnFirebase = new Set();
+        for (var k = 0; k < dataset.length; k++) {
+            var rFb = limpiarYSimplificarRut(dataset[k].rut);
+            if (rFb) rutsEnFirebase.add(rFb);
+        }
+
+        // 3. Cruzar la información matemática
+        var eliminados = [];
+        var nuevos = [];
+        var sinCambiosContador = 0;
+
+        // A. Recorrer la base de datos actual para buscar ELIMINADOS (Están en Firebase pero NO en el nuevo CSV)
+        for (var x = 0; x < dataset.length; x++) {
+            var itemFb = dataset[x];
+            var claveFb = limpiarYSimplificarRut(itemFb.rut);
+            
+            if (!rutsEnCsv.has(claveFb)) {
+                eliminados.push(itemFb);
+            } else {
+                sinCambiosContador++;
+            }
+        }
+
+        // B. Recorrer el nuevo CSV para buscar NUEVOS (Están en el CSV pero NO en Firebase)
+        for (var y = 0; y < datasetCsv.length; y++) {
+            var itemCsv = datasetCsv[y];
+            if (!rutsEnFirebase.has(itemCsv.rutClave)) {
+                nuevos.push(itemCsv);
+            }
+        }
+
+        // 4. Renderizar visualmente la tabla de resultados
+        var compBody = document.getElementById('compareTableBody');
+        var htmlResultado = "";
+
+        // Renderizar Eliminados (Rojo)
+        for (var a = 0; a < eliminados.length; a++) {
+            var el = eliminados[a];
+            htmlResultado += '<tr class="row-eliminado">' +
+                '<td><span class="badge-status badge-eliminado">eliminado</span></td>' +
+                '<td>' + el.nombre + '</td>' +
+                '<td>' + el.rut + '</td>' +
+                '<td>' + el.fecha + '</td>' +
+                '<td>' + el.prevision + '</td>' +
+                '</tr>';
+        }
+
+        // Renderizar Nuevos (Verde)
+        for (var b = 0; b < nuevos.length; b++) {
+            var nu = nuevos[b];
+            htmlResultado += '<tr class="row-nuevo">' +
+                '<td><span class="badge-status badge-nuevo">nuevo</span></td>' +
+                '<td>' + nu.nombre + '</td>' +
+                '<td>' + nu.rut + '</td>' +
+                '<td>' + nu.fecha + '</td>' +
+                '<td>' + nu.prevision + '</td>' +
+                '</tr>';
+        }
+
+        // Fila final con estadísticas solicitadas
+        htmlResultado += '<tr class="row-totalizadores">' +
+            '<td colspan="5" style="text-align: center; padding: 15px;">' + sinCambiosContador + ' deportistas sin cambios</td>' +
+            '</tr>';
+
+        compBody.innerHTML = htmlResultado;
+        document.getElementById('compareTableContainer').style.display = "block";
     }
 
     // LÓGICA DE BÚSQUEDA AVANZADA ACCENT-INSENSITIVE
