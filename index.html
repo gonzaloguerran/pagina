@@ -33,7 +33,7 @@
         .view-section { display: none; padding: 20px 15px; box-sizing: border-box; }
         .active-view { display: block; }
 
-        /* HEADER STICKY MODIFICADO */
+        /* HEADER STICKY */
         .sticky-header { position: fixed; top: 0; left: 0; right: 0; padding: 12px 15px; background: var(--header-bg); border-bottom: 0.5px solid #c6c6c8; z-index: 100; display: flex; align-items: center; gap: 10px; height: 44px; }
         .back-btn { background: none; border: none; color: var(--accent-blue); font-size: 16px; font-weight: 500; cursor: pointer; padding: 0; display: flex; align-items: center; }
         .search-input { flex: 1; padding: 8px 12px; border-radius: 10px; border: none; background: #e5e5ea; font-size: 16px; box-sizing: border-box; }
@@ -54,7 +54,6 @@
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid #f0f0f0; font-size: 14px; white-space: nowrap; }
         th { background: #f9f9f9; font-weight: 600; color: var(--ios-gray); }
         
-        /* Estados de filas */
         .match-row { background-color: rgba(52, 199, 89, 0.15); }
         .row-nuevo { background-color: rgba(52, 199, 89, 0.15); font-weight: 500; }
         .row-eliminado { background-color: rgba(255, 59, 48, 0.12); color: #c30000; }
@@ -63,7 +62,6 @@
         .badge-status { padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; text-transform: uppercase; display: inline-block; }
         .badge-nuevo { background: #34c759; color: white; }
         .badge-eliminado { background: #ff3b30; color: white; }
-
         .copy-btn { background: none; border: none; font-size: 16px; cursor: pointer; padding: 4px 8px; margin: 0; -webkit-tap-highlight-color: transparent; }
 
         /* PANTALLA 3: FORMULARIO DE REGISTRO */
@@ -79,6 +77,13 @@
         .upload-box { background: white; padding: 30px 20px; border-radius: 14px; text-align: center; border: 2px dashed #c6c6c8; max-width: 400px; margin: 20px auto; box-sizing: border-box; }
         .file-label { display: block; background: var(--accent-purple); color: white; padding: 12px 20px; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 15px; }
         .file-input { display: none; }
+
+        /* PANEL DE ACCIONES DE ACTUALIZACIÓN */
+        .actions-panel { max-width: 400px; margin: 20px auto; display: none; text-align: center; padding: 0 10px; }
+        .btn-panel { width: 100%; padding: 14px; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; border: none; margin-bottom: 12px; box-sizing: border-box; }
+        .btn-panel-update { background: var(--accent-green); color: white; }
+        .btn-panel-cancel { background: #e5e5ea; color: var(--accent-blue); }
+        .update-progress { font-size: 14px; font-weight: 500; color: var(--accent-purple); margin-top: 5px; display: none; }
     </style>
 </head>
 <body>
@@ -178,9 +183,8 @@
 
     <div id="compareView" class="view-section">
         <div style="max-width:600px; margin: 0 auto 15px auto;">
-            <button class="back-btn" onclick="cambiarPantalla('dashboard')">◀ Volver al Menú</button>
             <h2 style="margin: 15px 0 5px 0; font-size: 22px;">Consolidación y Auditoría</h2>
-            <p style="font-size:13px; color: var(--ios-gray); margin: 0;">Selecciona el listado CSV externo para cruzarlo contra la base de datos de la nube.</p>
+            <p style="font-size:13px; color: var(--ios-gray); margin: 0;">Selecciona el listado CSV externo para cruzarlo contra la base de datos.</p>
         </div>
 
         <div class="upload-box" id="inputBoxGroup">
@@ -188,6 +192,12 @@
             <p style="margin: 5px 0; font-size: 14px; font-weight: 500;">Cargar actualización (.csv)</p>
             <label for="csvFileInput" class="file-label">Elegir Archivo</label>
             <input type="file" id="csvFileInput" class="file-input" accept=".csv" onchange="analizarArchivoCsv(this)">
+        </div>
+
+        <div class="actions-panel" id="compareActionsPanel">
+            <button class="btn-panel btn-panel-update" id="executeUpdateBtn" onclick="aplicarActualizacionBaseNube()">Actualizar Base</button>
+            <button class="btn-panel btn-panel-cancel" id="cancelUpdateBtn" onclick="cambiarPantalla('dashboard')">Cancelar</button>
+            <div class="update-progress" id="updateProgressText">Sincronizando cambios en la nube...</div>
         </div>
 
         <div class="table-container" id="compareTableContainer" style="display:none; margin-top:20px;">
@@ -203,22 +213,14 @@
 </div>
 
 <script>
-    // =========================================================
-    // MANTÉN AQUÍ TUS CREDENCIALES DE FIREBASE:
-    const firebaseConfig = {
-      apiKey: "AIzaSyC7QyTMTRl2WdvuK5hf-uzIv-RPr0s5-h8",
-      authDomain: "buscador-c85db.firebaseapp.com",
-      projectId: "buscador-c85db",
-      storageBucket: "buscador-c85db.firebasestorage.app",
-      messagingSenderId: "1083903045830",
-      appId: "1:1083903045830:web:8cf9259e2d144dd112e7c7"
-    };
-    // =========================================================
-
     firebase.initializeApp(firebaseConfig);
     var auth = firebase.auth();
     var db = firebase.firestore();
     var dataset = [];
+
+    // Estructuras de control global para la sincronización masiva
+    var porEliminar = [];
+    var porAgregar = [];
 
     // Elementos de navegación
     var loginScreen = document.getElementById('loginScreen');
@@ -230,9 +232,10 @@
     var loadingMsg = document.getElementById('loadingMsg');
     var totalCount = document.getElementById('totalCount');
 
-    // Elementos del buscador
+    // Elementos del buscador y comparador
     var searchInput = document.getElementById('searchInput');
     var tableBody = document.getElementById('tableBody');
+    var actionsPanel = document.getElementById('compareActionsPanel');
 
     function cambiarPantalla(pantalla) {
         document.getElementById('dashboardView').classList.remove('active-view');
@@ -256,6 +259,9 @@
             document.getElementById('csvFileInput').value = "";
             document.getElementById('compareTableContainer').style.display = "none";
             document.getElementById('compareTableBody').innerHTML = "";
+            actionsPanel.style.display = "none";
+            porEliminar = [];
+            porAgregar = [];
         }
     }
 
@@ -302,6 +308,7 @@
             querySnapshot.forEach(function(doc) {
                 var d = doc.data();
                 dataset.push({
+                    id: doc.id, // <--- ALMACENAMOS EL ID PARA BORRADOS REALES EN LA NUBE
                     nombre: d.nombre,
                     rut: d.rut,
                     fecha: d.fechaNacimiento,
@@ -320,7 +327,7 @@
         });
     }
 
-    // LÓGICA DEL FORMULARIO DE REGISTRO
+    // FORMULARIO DE REGISTRO MANUAL
     function guardarNuevoDeportista() {
         var nom = document.getElementById('regNombre').value.trim();
         var rut = document.getElementById('regRut').value.trim();
@@ -351,8 +358,7 @@
 
         db.collection("deportistas").add(nuevoDoc)
         .then(function() {
-            dataset.push({ nombre: nom, rut: rut, fecha: fec || "Sin registro", prevision: prev || "Sin registro" });
-            totalCount.textContent = dataset.length;
+            bajarBaseDeDatos(); // Re-sincroniza completo para obtener el ID de inmediato
             status.style.color = "var(--accent-green)";
             status.textContent = "¡Deportista guardado con éxito!";
             limpiarFormulario();
@@ -373,10 +379,9 @@
         setTimeout(function() { document.getElementById('formStatus').style.display = "none"; }, 3000);
     }
 
-    // LÓGICA DEL TERCER MÓDULO: COMPARADOR DE ARCHIVOS CSV
+    // MÓDULO COMPARADOR DE ARCHIVOS CSV Y ALGORITMO DE ESCRITURA NATIVA
     function limpiarYSimplificarRut(rutStr) {
         if (!rutStr) return "";
-        // Quita puntos, guiones, espacios y convierte la K a minúscula para homologar
         return rutStr.replace(/[\.\-\s]/g, "").toLowerCase().trim();
     }
 
@@ -397,7 +402,9 @@
         var datasetCsv = [];
         var rutsEnCsv = new Set();
 
-        // 1. Parsear el archivo CSV entrante
+        porEliminar = [];
+        porAgregar = [];
+
         for (var i = 1; i < lineas.length; i++) {
             var linea = lineas[i].trim();
             if (!linea) continue;
@@ -414,51 +421,47 @@
                         rut: rutOriginal,
                         rutClave: rutLimpio,
                         fecha: columnas[3] ? columnas[3].trim() : "Sin registro",
-                        prevision: (columnas[4] || "").trim()
+                        prevision: (columnas[4] || "").trim(),
+                        categoria: (columnas[0] || "").trim()
                     });
                 }
             }
         }
 
-        // 2. Mapear los RUTs que tenemos actualmente en la base de datos de Firebase
         var rutsEnFirebase = new Set();
         for (var k = 0; k < dataset.length; k++) {
             var rFb = limpiarYSimplificarRut(dataset[k].rut);
             if (rFb) rutsEnFirebase.add(rFb);
         }
 
-        // 3. Cruzar la información matemática
-        var eliminados = [];
-        var nuevos = [];
         var sinCambiosContador = 0;
 
-        // A. Recorrer la base de datos actual para buscar ELIMINADOS (Están en Firebase pero NO en el nuevo CSV)
+        // A. Buscar bajas reales (Se guardan en memoria global porEliminar)
         for (var x = 0; x < dataset.length; x++) {
             var itemFb = dataset[x];
             var claveFb = limpiarYSimplificarRut(itemFb.rut);
             
             if (!rutsEnCsv.has(claveFb)) {
-                eliminados.push(itemFb);
+                porEliminar.push(itemFb); // Almacena el objeto completo (incluye .id)
             } else {
                 sinCambiosContador++;
             }
         }
 
-        // B. Recorrer el nuevo CSV para buscar NUEVOS (Están en el CSV pero NO en Firebase)
+        // B. Buscar altas reales (Se guardan en memoria global porAgregar)
         for (var y = 0; y < datasetCsv.length; y++) {
             var itemCsv = datasetCsv[y];
             if (!rutsEnFirebase.has(itemCsv.rutClave)) {
-                nuevos.push(itemCsv);
+                porAgregar.push(itemCsv);
             }
         }
 
-        // 4. Renderizar visualmente la tabla de resultados
+        // C. Renderizar tabla en pantalla
         var compBody = document.getElementById('compareTableBody');
         var htmlResultado = "";
 
-        // Renderizar Eliminados (Rojo)
-        for (var a = 0; a < eliminados.length; a++) {
-            var el = eliminados[a];
+        for (var a = 0; a < porEliminar.length; a++) {
+            var el = porEliminar[a];
             htmlResultado += '<tr class="row-eliminado">' +
                 '<td><span class="badge-status badge-eliminado">eliminado</span></td>' +
                 '<td>' + el.nombre + '</td>' +
@@ -468,9 +471,8 @@
                 '</tr>';
         }
 
-        // Renderizar Nuevos (Verde)
-        for (var b = 0; b < nuevos.length; b++) {
-            var nu = nuevos[b];
+        for (var b = 0; b < porAgregar.length; b++) {
+            var nu = porAgregar[b];
             htmlResultado += '<tr class="row-nuevo">' +
                 '<td><span class="badge-status badge-nuevo">nuevo</span></td>' +
                 '<td>' + nu.nombre + '</td>' +
@@ -480,16 +482,86 @@
                 '</tr>';
         }
 
-        // Fila final con estadísticas solicitadas
         htmlResultado += '<tr class="row-totalizadores">' +
             '<td colspan="5" style="text-align: center; padding: 15px;">' + sinCambiosContador + ' deportistas sin cambios</td>' +
             '</tr>';
 
         compBody.innerHTML = htmlResultado;
         document.getElementById('compareTableContainer').style.display = "block";
+        
+        // Habilitar y mostrar el panel de acciones con los dos nuevos botones
+        actionsPanel.style.display = "block";
+        document.getElementById('executeUpdateBtn').disabled = false;
+        document.getElementById('cancelUpdateBtn').disabled = false;
+        document.getElementById('updateProgressText').style.display = "none";
     }
 
-    // LÓGICA DE BÚSQUEDA AVANZADA ACCENT-INSENSITIVE
+    // ACCIÓN DEL NUEVO BOTÓN: EJECUTAR ACTUALIZACIÓN EN FIRESTORE EN SEGUNDO PLANO
+    function aplicarActualizacionBaseNube() {
+        var btnUpdate = document.getElementById('executeUpdateBtn');
+        var btnCancel = document.getElementById('cancelUpdateBtn');
+        var txtProgress = document.getElementById('updateProgressText');
+
+        // Bloqueo preventivo de interfaz
+        btnUpdate.disabled = true;
+        btnCancel.disabled = true;
+        txtProgress.style.display = "block";
+        txtProgress.textContent = "Iniciando escrituras en la nube...";
+
+        var poolPromesas = [];
+
+        // 1. Empaquetar eliminaciones pendientes
+        porEliminar.forEach(function(item) {
+            poolPromesas.push(db.collection("deportistas").doc(item.id).delete());
+        });
+
+        // 2. Empaquetar inserciones pendientes
+        porAgregar.forEach(function(item) {
+            var estructuraDoc = {
+                nombre: item.nombre,
+                rut: item.rut,
+                fechaNacimiento: item.fecha,
+                prevision: item.prevision,
+                categoria: item.categoria,
+                fechaRegistro: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            poolPromesas.push(db.collection("deportistas").add(estructuraDoc));
+        });
+
+        if (poolPromesas.length === 0) {
+            txtProgress.textContent = "La base ya está al día. No se detectaron cambios.";
+            setTimeout(function() { cambiarPantalla('dashboard'); }, 1500);
+            return;
+        }
+
+        txtProgress.textContent = "Guardando " + poolPromesas.length + " modificaciones en tiempo real...";
+
+        // Ejecutar procesamiento asíncrono atómico
+        Promise.all(poolPromesas)
+        .then(function() {
+            txtProgress.textContent = "Sincronizando cambios locales en el iPhone...";
+            // Re-descargar base de datos limpia para actualizar el contador principal y buscador
+            db.collection("deportistas").get()
+            .then(function(qs) {
+                dataset = [];
+                qs.forEach(function(doc) {
+                    var d = doc.data();
+                    dataset.push({ id: doc.id, nombre: d.nombre, rut: d.rut, fecha: d.fechaNacimiento, prevision: d.prevision });
+                });
+                totalCount.textContent = dataset.length;
+                txtProgress.textContent = "¡Base de datos actualizada con éxito!";
+                setTimeout(function() { cambiarPantalla('dashboard'); }, 1500);
+            });
+        })
+        .catch(function(error) {
+            console.error("Error crítico de escritura masiva:", error);
+            txtProgress.textContent = "Hubo un fallo de permisos al guardar en la nube.";
+            btnUpdate.disabled = false;
+            btnCancel.disabled = false;
+        });
+    }
+
+    // BUSCADOR INTELIGENTE ACCENT-INSENSITIVE
     function normalizeText(str) {
         if (!str) return "";
         var map = { 'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u', 'Á': 'a', 'É': 'e', 'Í': 'i', 'Ó': 'o', 'Ú': 'u', 'ü': 'u', 'Ü': 'u', 'ñ': 'n', 'Ñ': 'n' };
