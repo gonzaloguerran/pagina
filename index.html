@@ -244,7 +244,7 @@ const firebaseConfig = {
         }
     });
 
-    // Gestión del inicio de sesión con Persistencia Dinámica
+   // Gestión del inicio de sesión con Persistencia Dinámica corregida
     function ejecutarLogin() {
         var username = userInput.value.trim();
         var password = passInput.value;
@@ -255,8 +255,8 @@ const firebaseConfig = {
         errorMsg.style.display = "none";
         loadingMsg.style.display = "block";
 
-        // Elegir persistencia según el Checkbox
-        var tipoPersistencia = recordar ? firebase.auth.Auth.Persistence.LOCAL : firebase.auth.Auth.Persistence.SESSION;
+        // Usamos los textos directos que Firebase reconoce sin generar errores de lectura
+        var tipoPersistencia = recordar ? 'local' : 'session';
 
         auth.setPersistence(tipoPersistencia)
         .then(function() {
@@ -267,6 +267,7 @@ const firebaseConfig = {
             loadingMsg.style.display = "none";
             errorMsg.style.display = "block";
             passInput.value = "";
+            console.error("Error al iniciar sesión:", error);
         });
     }
 
