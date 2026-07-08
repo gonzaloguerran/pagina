@@ -213,16 +213,23 @@
 </div>
 
 <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyC7QyTMTRl2WdvuK5hf-uzIv-RPr0s5-h8",
+      authDomain: "buscador-c85db.firebaseapp.com",
+      projectId: "buscador-c85db",
+      storageBucket: "buscador-c85db.firebasestorage.app",
+      messagingSenderId: "1083903045830",
+      appId: "1:1083903045830:web:8cf9259e2d144dd112e7c7"
+    };
+
     firebase.initializeApp(firebaseConfig);
     var auth = firebase.auth();
     var db = firebase.firestore();
     var dataset = [];
 
-    // Estructuras de control global para la sincronización masiva
     var porEliminar = [];
     var porAgregar = [];
 
-    // Elementos de navegación
     var loginScreen = document.getElementById('loginScreen');
     var appContent = document.getElementById('appContent');
     var userInput = document.getElementById('userInput');
@@ -232,7 +239,6 @@
     var loadingMsg = document.getElementById('loadingMsg');
     var totalCount = document.getElementById('totalCount');
 
-    // Elementos del buscador y comparador
     var searchInput = document.getElementById('searchInput');
     var tableBody = document.getElementById('tableBody');
     var actionsPanel = document.getElementById('compareActionsPanel');
@@ -308,7 +314,7 @@
             querySnapshot.forEach(function(doc) {
                 var d = doc.data();
                 dataset.push({
-                    id: doc.id, // <--- ALMACENAMOS EL ID PARA BORRADOS REALES EN LA NUBE
+                    id: doc.id,
                     nombre: d.nombre,
                     rut: d.rut,
                     fecha: d.fechaNacimiento,
@@ -327,7 +333,6 @@
         });
     }
 
-    // FORMULARIO DE REGISTRO MANUAL
     function guardarNuevoDeportista() {
         var nom = document.getElementById('regNombre').value.trim();
         var rut = document.getElementById('regRut').value.trim();
@@ -358,7 +363,7 @@
 
         db.collection("deportistas").add(nuevoDoc)
         .then(function() {
-            bajarBaseDeDatos(); // Re-sincroniza completo para obtener el ID de inmediato
+            bajarBaseDeDatos();
             status.style.color = "var(--accent-green)";
             status.textContent = "¡Deportista guardado con éxito!";
             limpiarFormulario();
@@ -379,7 +384,6 @@
         setTimeout(function() { document.getElementById('formStatus').style.display = "none"; }, 3000);
     }
 
-    // MÓDULO COMPARADOR DE ARCHIVOS CSV Y ALGORITMO DE ESCRITURA NATIVA
     function limpiarYSimplificarRut(rutStr) {
         if (!rutStr) return "";
         return rutStr.replace(/[\.\-\s]/g, "").toLowerCase().trim();
@@ -414,7 +418,7 @@
                 var rutOriginal = (columnas[2] || "").trim();
                 var rutLimpio = limpiarYSimplificarRut(rutOriginal);
                 
-                if (rutLimpio) {
+                if (rutLinter = rutLimpio) {
                     rutsEnCsv.add(rutLimpio);
                     datasetCsv.push({
                         nombre: (columnas[1] || "").trim(),
@@ -436,19 +440,17 @@
 
         var sinCambiosContador = 0;
 
-        // A. Buscar bajas reales (Se guardan en memoria global porEliminar)
         for (var x = 0; x < dataset.length; x++) {
             var itemFb = dataset[x];
             var claveFb = limpiarYSimplificarRut(itemFb.rut);
             
             if (!rutsEnCsv.has(claveFb)) {
-                porEliminar.push(itemFb); // Almacena el objeto completo (incluye .id)
+                porEliminar.push(itemFb);
             } else {
                 sinCambiosContador++;
             }
         }
 
-        // B. Buscar altas reales (Se guardan en memoria global porAgregar)
         for (var y = 0; y < datasetCsv.length; y++) {
             var itemCsv = datasetCsv[y];
             if (!rutsEnFirebase.has(itemCsv.rutClave)) {
@@ -456,7 +458,6 @@
             }
         }
 
-        // C. Renderizar tabla en pantalla
         var compBody = document.getElementById('compareTableBody');
         var htmlResultado = "";
 
@@ -489,20 +490,17 @@
         compBody.innerHTML = htmlResultado;
         document.getElementById('compareTableContainer').style.display = "block";
         
-        // Habilitar y mostrar el panel de acciones con los dos nuevos botones
         actionsPanel.style.display = "block";
         document.getElementById('executeUpdateBtn').disabled = false;
         document.getElementById('cancelUpdateBtn').disabled = false;
         document.getElementById('updateProgressText').style.display = "none";
     }
 
-    // ACCIÓN DEL NUEVO BOTÓN: EJECUTAR ACTUALIZACIÓN EN FIRESTORE EN SEGUNDO PLANO
     function aplicarActualizacionBaseNube() {
         var btnUpdate = document.getElementById('executeUpdateBtn');
         var btnCancel = document.getElementById('cancelUpdateBtn');
         var txtProgress = document.getElementById('updateProgressText');
 
-        // Bloqueo preventivo de interfaz
         btnUpdate.disabled = true;
         btnCancel.disabled = true;
         txtProgress.style.display = "block";
@@ -510,12 +508,10 @@
 
         var poolPromesas = [];
 
-        // 1. Empaquetar eliminaciones pendientes
         porEliminar.forEach(function(item) {
             poolPromesas.push(db.collection("deportistas").doc(item.id).delete());
         });
 
-        // 2. Empaquetar inserciones pendientes
         porAgregar.forEach(function(item) {
             var estructuraDoc = {
                 nombre: item.nombre,
@@ -536,11 +532,9 @@
 
         txtProgress.textContent = "Guardando " + poolPromesas.length + " modificaciones en tiempo real...";
 
-        // Ejecutar procesamiento asíncrono atómico
         Promise.all(poolPromesas)
         .then(function() {
             txtProgress.textContent = "Sincronizando cambios locales en el iPhone...";
-            // Re-descargar base de datos limpia para actualizar el contador principal y buscador
             db.collection("deportistas").get()
             .then(function(qs) {
                 dataset = [];
@@ -561,7 +555,6 @@
         });
     }
 
-    // BUSCADOR INTELIGENTE ACCENT-INSENSITIVE
     function normalizeText(str) {
         if (!str) return "";
         var map = { 'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u', 'Á': 'a', 'É': 'e', 'Í': 'i', 'Ó': 'o', 'Ú': 'u', 'ü': 'u', 'Ü': 'u', 'ñ': 'n', 'Ñ': 'n' };
