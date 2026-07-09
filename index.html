@@ -47,32 +47,6 @@
         .menu-card .icon-box { font-size: 28px; width: 50px; height: 50px; background: #f2f2f7; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
         .menu-card .text-box h3 { margin: 0 0 2px 0; font-size: 17px; font-weight: 600; }
         .menu-card .text-box p { margin: 0; font-size: 13px; color: var(--ios-gray); }
-                <div class="menu-grid">
-            <div class="menu-card" onclick="cambiarPantalla('search')">
-                <div class="icon-box" style="color: var(--accent-blue);">🔍</div>
-                <div class="text-box">
-                    <h3>Módulo de Consultas</h3>
-                    <p>Buscador avanzado inteligente y copia de datos</p>
-                </div>
-            </div>
-            
-            <div class="menu-card" id="cardRegister" onclick="cambiarPantalla('register')">
-                <div class="icon-box" style="color: var(--accent-green);">➕</div>
-                <div class="text-box">
-                    <h3>Registrar Deportista</h3>
-                    <p>Ingreso manual directo a la base de datos central</p>
-                </div>
-            </div>
-
-            <div class="menu-card" id="cardCompare" onclick="cambiarPantalla('compare')">
-                <div class="icon-box" style="color: var(--accent-purple);">📊</div>
-                <div class="text-box">
-                    <h3>Comparar Listado CSV</h3>
-                    <p>Cruza un archivo nuevo y detecta cambios o bajas</p>
-                </div>
-            </div>
-        </div>
-
 
         /* TABLAS (BUSCADOR Y COMPARADOR) */
         .table-container { overflow-x: auto; background: white; border-radius: 10px; margin-top: 50px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
@@ -142,7 +116,7 @@
                 </div>
             </div>
             
-            <div class="menu-card" onclick="cambiarPantalla('register')">
+            <div class="menu-card" id="cardRegister" onclick="cambiarPantalla('register')">
                 <div class="icon-box" style="color: var(--accent-green);">➕</div>
                 <div class="text-box">
                     <h3>Registrar Deportista</h3>
@@ -150,7 +124,7 @@
                 </div>
             </div>
 
-            <div class="menu-card" onclick="cambiarPantalla('compare')">
+            <div class="menu-card" id="cardCompare" onclick="cambiarPantalla('compare')">
                 <div class="icon-box" style="color: var(--accent-purple);">📊</div>
                 <div class="text-box">
                     <h3>Comparar Listado CSV</h3>
@@ -296,6 +270,7 @@
             porAgregar = [];
         }
     }
+
     // El observador detecta si hay sesión activa y evalúa el rol del usuario
     auth.onAuthStateChanged(function(user) {
         if (user) {
@@ -310,14 +285,14 @@
             var cardCompare = document.getElementById('cardCompare');
             
             // Define aquí qué correos tienen permisos de administrador
-            var esAdministrador = (user.email === 'admin@admin.com' );
+            var esAdministrador = (user.email === 'admin@admin.com');
             
             if (esAdministrador) {
-                cardRegister.style.display = "flex"; // Muestra el módulo de registro
-                cardCompare.style.display = "flex";  // Muestra el módulo de comparación
+                if(cardRegister) cardRegister.style.display = "flex"; 
+                if(cardCompare) cardCompare.style.display = "flex";  
             } else {
-                cardRegister.style.display = "none"; // Oculta por completo para usuarios comunes
-                cardCompare.style.display = "none";  // Oculta por completo para usuarios comunes
+                if(cardRegister) cardRegister.style.display = "none"; 
+                if(cardCompare) cardCompare.style.display = "none";  
             }
             // ----------------------------------------
 
@@ -461,7 +436,7 @@
                 var rutOriginal = (columnas[2] || "").trim();
                 var rutLimpio = limpiarYSimplificarRut(rutOriginal);
                 
-                if (rutLinter = rutLimpio) {
+                if (rutLimpio) {
                     rutsEnCsv.add(rutLimpio);
                     datasetCsv.push({
                         nombre: (columnas[1] || "").trim(),
